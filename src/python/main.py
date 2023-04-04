@@ -1,30 +1,20 @@
 import interactions
-from colorama import Fore
-from subcommands import *
+from help_manager import HelpCommand
+from functions import *
 
 # -- Constantes and Variables -- #
 
-TOKEN = ""
+try:
+    import botinfo
+except ImportError:
+    exit("Le fichier token.py n'a pas été trouvé !")
 ready = False
-bot = interactions.Client(token=TOKEN)
-BOT_OWNER = bot.me.owner.id
+bot = interactions.Client(token=botinfo.TOKEN)
 help_cmd = HelpCommand()
-
-# -- Fonctions -- #
-
-def logger(message, type="INFO"):
-    if(type == "INFO"):
-        print(Fore.GREEN + "[INFO] " + message + Fore.RESET)
-    elif(type == "WARNING"):
-        print(Fore.YELLOW + "[WARNING] " + message + Fore.RESET)
-    elif(type == "ERROR"):
-        print(Fore.RED + "[ERROR] " + message + Fore.RESET)
-    else:
-        print(Fore.CYAN + "[DEBUG] " + message + Fore.RESET)
 
 ## -- Events -- ##
 
-@bot.event
+@bot.event()
 async def on_start():
     global ready
     if(not ready):
@@ -44,11 +34,19 @@ async def on_start():
 
 @bot.event
 async def on_command_error(ctx: interactions.CommandContext, error):
-    owner_user = await interactions.get(bot, interactions.User, object_id=BOT_OWNER)
+    owner_user = await interactions.get(bot, interactions.User, object_id=botinfo.ID_OWNER)
     embed = interactions.Embed(title="Une erreur est survenue !", color=0xFF0000)
     embed.add_field(name="Une erreur est survenue !", value=f"```{error}```")
     logger(f"Une erreur est survenue !\n{error}", type="ERROR")
     await owner_user.send(embed=embed)
+
+
+@bot.event
+async def on_guild_member_add(member: interactions.GuildMember):
+    channel: interactions.Channel = await interactions.get(bot, interactions.Channel, object_id=botinfo.ID_CHANNEL_MEMBER_JOIN)
+    embed = botinfo.EMBED_JOIN
+    embed.add_field(name="\ ", value=f"**{member.user.name}** a rejoint le serveur !")
+    await channel.send(embed=embed)
 
 ## -- Commands -- ##
 
@@ -65,10 +63,10 @@ async def help(ctx: interactions.CommandContext):
 @bot.command(
     name="add_help",
     description="Ajoute une commande à l'aide du bot",
-    default_member_permissions=interactions.MemberPermissions.ADMINISTRATOR
+    default_member_permissions=interactions.Permissions.ADMINISTRATOR
 )
 async def add_help(ctx: interactions.CommandContext, name: str, description: str):
-    if(ctx.user.id == BOT_OWNER):
+    if(ctx.user.id == botinfo.ID_OWNER):
         help_cmd.add_command(name, description)
         await ctx.send("Commande ajoutée avec succès !")
     else:
@@ -79,10 +77,10 @@ async def add_help(ctx: interactions.CommandContext, name: str, description: str
 @bot.command(
     name="remove_help",
     description="Supprime une commande de l'aide du bot",
-    default_member_permissions=interactions.MemberPermissions.ADMINISTRATOR
+    default_member_permissions=interactions.Permissions.ADMINISTRATOR
 )
 async def remove_help(ctx: interactions.CommandContext, name: str):
-    if(ctx.user.id == BOT_OWNER):
+    if(ctx.user.id == botinfo.ID_OWNER):
         help_cmd.remove_command(name)
         await ctx.send("Commande supprimée avec succès !")
     else:
@@ -100,7 +98,7 @@ async def ping(ctx: interactions.CommandContext):
 
 # -- Lancement du bot -- #
 if __name__ == "__main__":
-    bot.run()
+    bot.start()
 else:
     logger("Ce fichier ne doit pas être importé !", type="ERROR")
     exit()
